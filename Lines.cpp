@@ -1,7 +1,4 @@
 #include <windows.h>
-
-
-
 #include <GL/glut.h>
 
 void init() {
@@ -15,13 +12,22 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     glBegin(GL_LINES);
+
+    // Line 1 (Vertical - Red)
     glColor3f(1.0f, 0.0f, 0.0f);
     glVertex2f(0, 3);
     glVertex2f(0, -3);
 
+    // Line 2 (Horizontal - Green)
     glColor3f(0.0f, 1.0f, 0.0f);
     glVertex2f(3, 0);
     glVertex2f(-3, 0);
+
+    // ✅ New Line (Diagonal - Blue)
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex2f(-3, -3);
+    glVertex2f(3, 3);
+
     glEnd();
 
     glFlush();

@@ -1,425 +1,501 @@
 #include <GL/glut.h>
 #include <cmath>
+#include <cstdlib>
 
-// ----------------------------
-// Global variables
-// ----------------------------
-float tractorX = -1.2f;
-float droneX = -1.1f;
-float cropGrowth = 0.2f;
-float sprayOffset = 0.0f;
-float irrigationOffset = 0.0f;
-
-bool tractorMove = true;
-bool droneMove = true;
-bool irrigationOn = true;
+float tractorX = -320.0f;
+float droneX = -250.0f;
+float cloudX = -150.0f;
+float windmillAngle = 0.0f;
+float propellerAngle = 0.0f;
+float waterOffset = 0.0f;
+float cropScale = 0.7f;
 bool cropGrow = true;
-bool sprayOn = true;
 
-// ----------------------------
-// Utility functions
-// ----------------------------
-void drawCircle(float cx, float cy, float r, int segments = 100)
-{
-    glBegin(GL_POLYGON);
-    for (int i = 0; i < segments; i++)
-    {
-        float theta = 2.0f * 3.1416f * i / segments;
-        float x = r * cos(theta);
-        float y = r * sin(theta);
-        glVertex2f(cx + x, cy + y);
-    }
+void plotPoint(int x, int y) {
+    glBegin(GL_POINTS);
+    glVertex2i(x, y);
     glEnd();
 }
 
-void drawRect(float x1, float y1, float x2, float y2)
-{
-    glBegin(GL_POLYGON);
-    glVertex2f(x1, y1);
-    glVertex2f(x2, y1);
-    glVertex2f(x2, y2);
-    glVertex2f(x1, y2);
-    glEnd();
-}
+void drawDDA(int x1, int y1, int x2, int y2) {
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
 
-void drawTriangle(float x1, float y1, float x2, float y2, float x3, float y3)
-{
-    glBegin(GL_TRIANGLES);
-    glVertex2f(x1, y1);
-    glVertex2f(x2, y2);
-    glVertex2f(x3, y3);
-    glEnd();
-}
+    float xInc = dx / (float)steps;
+    float yInc = dy / (float)steps;
 
-// ----------------------------
-// Background
-// ----------------------------
-void drawSky()
-{
-    glColor3f(0.53f, 0.81f, 0.98f);
-    drawRect(-1.0f, 0.2f, 1.0f, 1.0f);
-}
+    float x = x1;
+    float y = y1;
 
-void drawSun()
-{
-    glColor3f(1.0f, 0.9f, 0.0f);
-    drawCircle(0.75f, 0.78f, 0.08f);
-}
-
-void drawGround()
-{
-    glColor3f(0.35f, 0.75f, 0.30f);
-    drawRect(-1.0f, -1.0f, 1.0f, 0.2f);
-}
-
-void drawFieldRows()
-{
-    glColor3f(0.55f, 0.27f, 0.07f);
-
-    for (float y = -0.8f; y <= 0.05f; y += 0.2f)
-    {
-        glBegin(GL_QUADS);
-        glVertex2f(-1.0f, y);
-        glVertex2f(1.0f, y);
-        glVertex2f(1.0f, y + 0.08f);
-        glVertex2f(-1.0f, y + 0.08f);
-        glEnd();
+    for (int i = 0; i <= steps; i++) {
+        plotPoint(round(x), round(y));
+        x += xInc;
+        y += yInc;
     }
 }
 
-void drawHouse()
-{
-    glColor3f(0.85f, 0.65f, 0.45f);
-    drawRect(0.65f, 0.10f, 0.90f, 0.35f);
+void drawBresenham(int x1, int y1, int x2, int y2) {
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    int sx = (x1 < x2) ? 1 : -1;
+    int sy = (y1 < y2) ? 1 : -1;
+    int err = dx - dy;
 
-    glColor3f(0.65f, 0.15f, 0.15f);
-    drawTriangle(0.62f, 0.35f, 0.775f, 0.50f, 0.93f, 0.35f);
-
-    glColor3f(0.4f, 0.2f, 0.1f);
-    drawRect(0.74f, 0.10f, 0.81f, 0.24f);
-
-    glColor3f(0.2f, 0.4f, 0.8f);
-    drawRect(0.67f, 0.20f, 0.73f, 0.28f);
-    drawRect(0.82f, 0.20f, 0.88f, 0.28f);
-}
-
-void drawTree(float x, float y)
-{
-    glColor3f(0.55f, 0.27f, 0.07f);
-    drawRect(x - 0.015f, y - 0.12f, x + 0.015f, y + 0.05f);
-
-    glColor3f(0.0f, 0.5f, 0.0f);
-    drawCircle(x, y + 0.10f, 0.08f);
-    drawCircle(x - 0.05f, y + 0.05f, 0.06f);
-    drawCircle(x + 0.05f, y + 0.05f, 0.06f);
-}
-
-// ----------------------------
-// Crops
-// ----------------------------
-void drawSingleCrop(float x, float y, float h)
-{
-    // stem
-    glColor3f(0.0f, 0.6f, 0.0f);
-    glLineWidth(2);
-    glBegin(GL_LINES);
-    glVertex2f(x, y);
-    glVertex2f(x, y + h);
-    glEnd();
-
-    // leaves
-    glBegin(GL_TRIANGLES);
-    glVertex2f(x, y + h * 0.45f);
-    glVertex2f(x - 0.02f, y + h * 0.35f);
-    glVertex2f(x, y + h * 0.30f);
-
-    glVertex2f(x, y + h * 0.60f);
-    glVertex2f(x + 0.02f, y + h * 0.50f);
-    glVertex2f(x, y + h * 0.45f);
-    glEnd();
-
-    // top grain
-    glColor3f(0.95f, 0.85f, 0.2f);
-    drawCircle(x, y + h + 0.01f, 0.01f);
-}
-
-void drawCrops()
-{
-    for (float row = -0.72f; row <= -0.02f; row += 0.2f)
-    {
-        for (float x = -0.92f; x <= 0.92f; x += 0.10f)
-        {
-            drawSingleCrop(x, row, cropGrowth);
+    while (true) {
+        plotPoint(x1, y1);
+        if (x1 == x2 && y1 == y2) break;
+        int e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x1 += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y1 += sy;
         }
     }
 }
 
-// ----------------------------
-// Tractor
-// ----------------------------
-void drawTractor()
-{
-    glPushMatrix();
-    glTranslatef(tractorX, -0.38f, 0.0f);
+void drawMidpointCircle(int xc, int yc, int r) {
+    int x = 0;
+    int y = r;
+    int p = 1 - r;
 
-    // body
-    glColor3f(0.85f, 0.1f, 0.1f);
-    drawRect(-0.10f, 0.00f, 0.08f, 0.08f);
+    while (x <= y) {
+        plotPoint(xc + x, yc + y);
+        plotPoint(xc - x, yc + y);
+        plotPoint(xc + x, yc - y);
+        plotPoint(xc - x, yc - y);
+        plotPoint(xc + y, yc + x);
+        plotPoint(xc - y, yc + x);
+        plotPoint(xc + y, yc - x);
+        plotPoint(xc - y, yc - x);
 
-    // cabin
-    glColor3f(0.9f, 0.2f, 0.2f);
-    drawRect(0.00f, 0.08f, 0.08f, 0.15f);
-
-    // window
-    glColor3f(0.6f, 0.85f, 1.0f);
-    drawRect(0.015f, 0.10f, 0.065f, 0.14f);
-
-    // exhaust
-    glColor3f(0.2f, 0.2f, 0.2f);
-    drawRect(0.06f, 0.15f, 0.075f, 0.22f);
-
-    // wheels
-    glColor3f(0.1f, 0.1f, 0.1f);
-    drawCircle(-0.06f, -0.01f, 0.045f);
-    drawCircle(0.06f, -0.01f, 0.06f);
-
-    glColor3f(0.7f, 0.7f, 0.7f);
-    drawCircle(-0.06f, -0.01f, 0.018f);
-    drawCircle(0.06f, -0.01f, 0.022f);
-
-    glPopMatrix();
+        x++;
+        if (p < 0)
+            p += 2 * x + 1;
+        else {
+            y--;
+            p += 2 * (x - y) + 1;
+        }
+    }
 }
 
-// ----------------------------
-// Drone + Spray
-// ----------------------------
-void drawDrone()
-{
-    glPushMatrix();
-    glTranslatef(droneX, 0.58f, 0.0f);
+void fillRect(int x1, int y1, int x2, int y2) {
+    glBegin(GL_POLYGON);
+    glVertex2i(x1, y1);
+    glVertex2i(x2, y1);
+    glVertex2i(x2, y2);
+    glVertex2i(x1, y2);
+    glEnd();
+}
+
+void drawFilledCircle(float xc, float yc, float r) {
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(xc, yc);
+    for (int i = 0; i <= 360; i++) {
+        float a = i * 3.1416f / 180.0f;
+        glVertex2f(xc + cos(a) * r, yc + sin(a) * r);
+    }
+    glEnd();
+}
+
+void drawGround() {
+    glColor3f(0.82f, 0.94f, 0.65f);
+    fillRect(-400, -50, 400, 300);
+
+    glColor3f(0.40f, 0.75f, 0.30f);
+    fillRect(-400, -220, 400, -50);
+}
+
+void drawSun() {
+    glColor3f(1.0f, 0.75f, 0.0f);
+    drawFilledCircle(280, 220, 30);
+
+    glColor3f(1.0f, 0.55f, 0.0f);
+    for (int i = 0; i < 360; i += 30) {
+        float a = i * 3.1416f / 180.0f;
+        int x1 = 280 + cos(a) * 40;
+        int y1 = 220 + sin(a) * 40;
+        int x2 = 280 + cos(a) * 55;
+        int y2 = 220 + sin(a) * 55;
+        drawDDA(x1, y1, x2, y2);
+    }
+}
+
+void drawCloud(float x, float y) {
+    glColor3f(1, 1, 1);
+    drawFilledCircle(x, y, 18);
+    drawFilledCircle(x + 20, y + 10, 22);
+    drawFilledCircle(x + 40, y, 18);
+    drawFilledCircle(x + 18, y - 8, 18);
+}
+
+void drawLargeTree(float x, float y) {
+    // Trunk
+    glColor3f(0.35f, 0.16f, 0.08f);
+    fillRect(x - 8, y - 60, x + 8, y + 60);
+
+    // Darker green leaves
+    glColor3f(0.1f, 0.35f, 0.1f);
+    drawFilledCircle(x, y + 90, 35);
+    drawFilledCircle(x - 22, y + 70, 28);
+    drawFilledCircle(x + 22, y + 70, 28);
+    drawFilledCircle(x, y + 55, 25);
+}
+
+void drawFarmHouse() {
+    // brick wall (iter dewal) around house
+    glColor3f(0.55f, 0.27f, 0.15f); // Brick color
+    fillRect(-360, -25, -160, -10);
+
+    // brick patterns
+    glColor3f(0.4f, 0.15f, 0.1f);
+    for (int x = -355; x < -160; x += 30) {
+        drawDDA(x, -25, x, -10);
+    }
+    drawDDA(-360, -25, -160, -25);
+    drawDDA(-360, -10, -160, -10);
 
     // main body
-    glColor3f(0.2f, 0.2f, 0.2f);
-    drawRect(-0.05f, -0.02f, 0.05f, 0.02f);
+    glColor3f(0.95f, 0.92f, 0.85f);
+    fillRect(-320, -20, -200, 80);
 
-    // arms
-    glLineWidth(3);
-    glBegin(GL_LINES);
-    glVertex2f(-0.09f, 0.05f);
-    glVertex2f(-0.03f, 0.01f);
+    glColor3f(0, 0, 0);
+    drawDDA(-320, -20, -200, -20);
+    drawDDA(-200, -20, -200, 80);
+    drawDDA(-200, 80, -320, 80);
+    drawDDA(-320, 80, -320, -20);
 
-    glVertex2f(0.09f, 0.05f);
-    glVertex2f(0.03f, 0.01f);
-
-    glVertex2f(-0.09f, -0.05f);
-    glVertex2f(-0.03f, -0.01f);
-
-    glVertex2f(0.09f, -0.05f);
-    glVertex2f(0.03f, -0.01f);
+    // roof
+    glColor3f(0.65f, 0.22f, 0.18f);
+    glBegin(GL_TRIANGLES);
+    glVertex2i(-340, 80);
+    glVertex2i(-180, 80);
+    glVertex2i(-260, 140);
     glEnd();
 
-    // propellers
-    glColor3f(0.0f, 0.0f, 0.0f);
-    drawCircle(-0.09f, 0.05f, 0.015f);
-    drawCircle(0.09f, 0.05f, 0.015f);
-    drawCircle(-0.09f, -0.05f, 0.015f);
-    drawCircle(0.09f, -0.05f, 0.015f);
+    glColor3f(0, 0, 0);
+    drawBresenham(-340, 80, -260, 140);
+    drawBresenham(-260, 140, -180, 80);
+    drawBresenham(-340, 80, -180, 80);
 
-    // spray
-    if (sprayOn)
-    {
-        glColor3f(0.7f, 0.9f, 1.0f);
-        glLineWidth(2);
-        glBegin(GL_LINES);
-        for (float i = -0.035f; i <= 0.035f; i += 0.02f)
-        {
-            glVertex2f(i, -0.02f);
-            glVertex2f(i + 0.01f * sin(sprayOffset * 5), -0.18f);
+    // Stairs (siri) at the entrance
+    glColor3f(0.6f, 0.6f, 0.6f); // Concrete color
+    fillRect(-285, -32, -235, -20); // Bottom step
+    fillRect(-278, -26, -242, -20); // Top step
+
+    glColor3f(0, 0, 0);
+    drawBresenham(-285, -32, -235, -32);
+    drawBresenham(-235, -32, -235, -20);
+    drawBresenham(-285, -32, -285, -20);
+
+    // door
+    glColor3f(0.45f, 0.28f, 0.15f);
+    fillRect(-275, -20, -245, 35);
+
+    glColor3f(0, 0, 0);
+    drawDDA(-275, -20, -245, -20);
+    drawDDA(-245, -20, -245, 35);
+    drawDDA(-245, 35, -275, 35);
+    drawDDA(-275, 35, -275, -20);
+
+    // window
+    glColor3f(0.55f, 0.82f, 0.95f);
+    fillRect(-235, 20, -210, 50);
+
+    glColor3f(0, 0, 0);
+    drawDDA(-235, 20, -210, 20);
+    drawDDA(-210, 20, -210, 50);
+    drawDDA(-210, 50, -235, 50);
+    drawDDA(-235, 50, -235, 20);
+    drawDDA(-222, 20, -222, 50);
+    drawDDA(-235, 35, -210, 35);
+}
+
+void drawWindmill() {
+    // pole
+    glColor3f(0.60f, 0.60f, 0.65f);
+    fillRect(220, -40, 240, 130);
+
+    glColor3f(0, 0, 0);
+    drawBresenham(220, -40, 240, -40);
+    drawBresenham(240, -40, 240, 130);
+    drawBresenham(240, 130, 220, 130);
+    drawBresenham(220, 130, 220, -40);
+
+    // blades
+    glPushMatrix();
+    glTranslatef(230, 140, 0);
+    glRotatef(windmillAngle, 0, 0, 1);
+
+    glColor3f(0.95f, 0.95f, 0.98f);
+    glBegin(GL_TRIANGLES);
+    glVertex2i(0, 0); glVertex2i(65, 8); glVertex2i(65, -8);
+    glVertex2i(0, 0); glVertex2i(-65, 8); glVertex2i(-65, -8);
+    glVertex2i(0, 0); glVertex2i(8, 65); glVertex2i(-8, 65);
+    glVertex2i(0, 0); glVertex2i(8, -65); glVertex2i(-8, -65);
+    glEnd();
+
+    glColor3f(0, 0, 0);
+    drawMidpointCircle(0, 0, 6);
+
+    glPopMatrix();
+}
+
+void drawFieldLines() {
+    glColor3f(0.25f, 0.55f, 0.18f);
+    for (int y = -70; y >= -180; y -= 20) {
+        drawDDA(-380, y, 380, y);
+    }
+}
+
+void drawCrops() {
+    glColor3f(0.10f, 0.55f, 0.10f);
+
+    for (int x = -360; x <= 360; x += 25) {
+        for (int y = -85; y >= -185; y -= 20) {
+            glPushMatrix();
+            glTranslatef(x, y, 0);
+            glScalef(1.0f, cropScale, 1.0f);
+
+            glBegin(GL_TRIANGLES);
+            glVertex2i(0, 0);
+            glVertex2i(-4, 16);
+            glVertex2i(0, 12);
+
+            glVertex2i(0, 0);
+            glVertex2i(4, 16);
+            glVertex2i(0, 12);
+            glEnd();
+
+            glPopMatrix();
         }
-        glEnd();
+    }
+}
+
+void drawCow(float x, float y, float colorR, float colorG, float colorB) {
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+
+    // Body
+    glColor3f(colorR, colorG, colorB);
+    fillRect(0, 0, 30, 18);
+
+    // Head
+    fillRect(-8, 10, 2, 22); // neck
+    drawFilledCircle(-8, 18, 7); // head
+
+    // Legs
+    fillRect(5, -8, 8, 0);
+    fillRect(22, -8, 25, 0);
+
+    // Eyes
+    glColor3f(0, 0, 0);
+    drawFilledCircle(-10, 20, 1.5);
+
+    // Spots (for variety)
+    if (colorR > 0.8) {
+        glColor3f(0.2, 0.2, 0.2);
+        drawFilledCircle(10, 12, 4);
+        drawFilledCircle(22, 5, 3);
     }
 
     glPopMatrix();
 }
 
-// ----------------------------
-// Irrigation system
-// ----------------------------
-void drawIrrigation()
-{
-    // pipe line
-    glColor3f(0.35f, 0.35f, 0.35f);
-    drawRect(-0.95f, 0.07f, 0.95f, 0.10f);
-
-    for (float x = -0.8f; x <= 0.8f; x += 0.4f)
-    {
-        glColor3f(0.25f, 0.25f, 0.25f);
-        drawRect(x - 0.01f, 0.04f, x + 0.01f, 0.10f);
-
-        if (irrigationOn)
-        {
-            glColor3f(0.4f, 0.8f, 1.0f);
-            glBegin(GL_LINES);
-            glVertex2f(x, 0.04f);
-            glVertex2f(x - 0.03f, -0.08f - 0.02f * sin(irrigationOffset));
-            glVertex2f(x, 0.04f);
-            glVertex2f(x + 0.03f, -0.08f - 0.02f * sin(irrigationOffset));
-            glEnd();
-        }
+void drawCowShed() {
+    // Road (Rasta) in front
+    glColor3f(0.4f, 0.4f, 0.45f);
+    fillRect(-150, -55, 150, -35);
+    glColor3f(1, 1, 1);
+    for (int x = -140; x < 140; x += 40) {
+        fillRect(x, -46, x + 20, -44);
     }
+
+    // Shed structure
+    // Back wall
+    glColor3f(0.7f, 0.5f, 0.3f);
+    fillRect(-100, -35, 120, 40);
+
+    // Pillars
+    glColor3f(0.4f, 0.2f, 0.1f);
+    fillRect(-100, -35, -90, 40);
+    fillRect(10, -35, 20, 40);
+    fillRect(110, -35, 120, 40);
+
+    // Roof
+    glColor3f(0.5f, 0.5f, 0.55f);
+    glBegin(GL_POLYGON);
+    glVertex2i(-110, 40);
+    glVertex2i(130, 40);
+    glVertex2i(110, 70);
+    glVertex2i(-90, 70);
+    glEnd();
+
+    // Cows inside
+    drawCow(-60, -15, 0.9, 0.9, 0.9); // White cow with spots
+    drawCow(50, -15, 0.5, 0.3, 0.1);  // Brown cow
 }
 
-// ----------------------------
-// Text
-// ----------------------------
-void drawText(float x, float y, const char *str)
-{
-    glColor3f(0.0f, 0.0f, 0.0f);
-    glRasterPos2f(x, y);
-    while (*str)
-    {
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *str);
-        str++;
-    }
+void drawTractor() {
+    glPushMatrix();
+    glTranslatef(tractorX, -145, 0);
+
+    // body
+    glColor3f(0.15f, 0.6f, 0.18f);
+    glBegin(GL_POLYGON);
+    glVertex2i(0, 15);
+    glVertex2i(50, 15);
+    glVertex2i(55, 35);
+    glVertex2i(25, 35);
+    glVertex2i(15, 50);
+    glVertex2i(0, 50);
+    glEnd();
+
+    // engine/front
+    glColor3f(0.12f, 0.48f, 0.15f);
+    fillRect(50, 20, 85, 38);
+
+    // window
+    glColor3f(0.65f, 0.88f, 0.95f);
+    fillRect(8, 28, 22, 45);
+
+    // outline
+    glColor3f(0, 0, 0);
+    drawBresenham(0, 15, 50, 15);
+    drawBresenham(50, 15, 55, 35);
+    drawBresenham(55, 35, 25, 35);
+    drawBresenham(25, 35, 15, 50);
+    drawBresenham(15, 50, 0, 50);
+    drawBresenham(0, 50, 0, 15);
+
+    drawBresenham(50, 20, 85, 20);
+    drawBresenham(85, 20, 85, 38);
+    drawBresenham(85, 38, 50, 38);
+    drawBresenham(50, 38, 50, 20);
+
+    // wheels
+    glColor3f(0, 0, 0);
+    drawMidpointCircle(18, 10, 13);
+    drawMidpointCircle(67, 10, 18);
+
+    glColor3f(0.7f, 0.7f, 0.7f);
+    drawFilledCircle(18, 10, 5);
+    drawFilledCircle(67, 10, 7);
+
+    glPopMatrix();
 }
 
-// ----------------------------
-// Display
-// ----------------------------
-void display()
-{
+void drawDrone() {
+    glPushMatrix();
+    glTranslatef(droneX, 120, 0);
+
+    // body
+    glColor3f(0.18f, 0.18f, 0.22f);
+    fillRect(-18, -6, 18, 6);
+
+    glColor3f(0, 0, 0);
+    drawBresenham(-18, -6, 18, -6);
+    drawBresenham(18, -6, 18, 6);
+    drawBresenham(18, 6, -18, 6);
+    drawBresenham(-18, 6, -18, -6);
+
+    // arms
+    drawBresenham(-18, 0, -35, 18);
+    drawBresenham(18, 0, 35, 18);
+    drawBresenham(-18, 0, -35, -18);
+    drawBresenham(18, 0, 35, -18);
+
+    // propellers
+    int px[4] = { -35, 35, -35, 35 };
+    int py[4] = { 18, 18, -18, -18 };
+
+    for (int i = 0; i < 4; i++) {
+        glPushMatrix();
+        glTranslatef(px[i], py[i], 0);
+        glRotatef(propellerAngle, 0, 0, 1);
+
+        glColor3f(0.3f, 0.3f, 0.35f);
+        glBegin(GL_TRIANGLES);
+        glVertex2i(0, 0); glVertex2i(12, 2); glVertex2i(12, -2);
+        glVertex2i(0, 0); glVertex2i(-12, 2); glVertex2i(-12, -2);
+        glEnd();
+
+        glColor3f(0, 0, 0);
+        drawMidpointCircle(0, 0, 2);
+
+        glPopMatrix();
+    }
+
+    glPopMatrix();
+}
+
+void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    drawSky();
-    drawSun();
     drawGround();
-    drawFieldRows();
-    drawHouse();
-    drawTree(-0.82f, 0.16f);
-    drawTree(-0.65f, 0.18f);
-    drawTree(0.48f, 0.17f);
+    drawSun();
+    drawCloud(cloudX, 210);
+    drawCloud(cloudX + 100, 185);
 
-    drawIrrigation();
+    drawLargeTree(-360, 40);
+    drawFarmHouse();
+    drawWindmill();
+
+    drawFieldLines();
     drawCrops();
-    drawTractor();
+    drawCowShed();
     drawDrone();
+    drawTractor();
 
-    drawText(-0.98f, 0.92f, "Smart Farming System");
-    drawText(-0.98f, 0.86f, "Keys: T=Tractor D=Drone I=Irrigation G=Grow S=Spray");
-
-    glutSwapBuffers();
+    glFlush();
 }
 
-// ----------------------------
-// Animation
-// ----------------------------
-void update(int value)
-{
-    if (tractorMove)
-    {
-        tractorX += 0.01f;
-        if (tractorX > 1.2f)
-            tractorX = -1.2f;
-    }
+void update(int value) {
+    tractorX += 2.0f;
+    if (tractorX > 420) tractorX = -420;
 
-    if (droneMove)
-    {
-        droneX += 0.012f;
-        if (droneX > 1.2f)
-            droneX = -1.2f;
-    }
+    droneX += 1.5f;
+    if (droneX > 420) droneX = -420;
 
-    if (cropGrow)
-    {
-        cropGrowth += 0.0008f;
-        if (cropGrowth > 0.11f)
-            cropGrowth = 0.11f;
-    }
+    cloudX += 0.4f;
+    if (cloudX > 420) cloudX = -220;
 
-    sprayOffset += 0.08f;
-    irrigationOffset += 0.10f;
+    windmillAngle += 2.0f;
+    if (windmillAngle > 360) windmillAngle -= 360;
+
+    propellerAngle += 12.0f;
+    if (propellerAngle > 360) propellerAngle -= 360;
+
+    waterOffset += 1.0f;
+
+    if (cropGrow) cropScale += 0.002f;
+    else cropScale -= 0.002f;
+
+    if (cropScale >= 1.05f) cropGrow = false;
+    if (cropScale <= 0.7f) cropGrow = true;
 
     glutPostRedisplay();
-    glutTimerFunc(16, update, 0);
+    glutTimerFunc(30, update, 0);
 }
 
-// ----------------------------
-// Keyboard control
-// ----------------------------
-void keyboard(unsigned char key, int x, int y)
-{
-    switch (key)
-    {
-    case 't':
-    case 'T':
-        tractorMove = !tractorMove;
-        break;
-
-    case 'd':
-    case 'D':
-        droneMove = !droneMove;
-        break;
-
-    case 'i':
-    case 'I':
-        irrigationOn = !irrigationOn;
-        break;
-
-    case 'g':
-    case 'G':
-        cropGrow = !cropGrow;
-        break;
-
-    case 's':
-    case 'S':
-        sprayOn = !sprayOn;
-        break;
-
-    case 'r':
-    case 'R':
-        // reset
-        tractorX = -1.2f;
-        droneX = -1.1f;
-        cropGrowth = 0.02f;
-        tractorMove = true;
-        droneMove = true;
-        irrigationOn = true;
-        cropGrow = true;
-        sprayOn = true;
-        break;
-
-    case 27:
-        exit(0);
-        break;
-    }
+void init() {
+    glClearColor(0.58f, 0.84f, 0.98f, 1.0f);
+    glPointSize(2.0);
+    gluOrtho2D(-400, 400, -250, 300);
 }
 
-// ----------------------------
-// Init
-// ----------------------------
-void init()
-{
-    glClearColor(0.85f, 0.95f, 1.0f, 1.0f);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(-1, 1, -1, 1);
-}
-
-// ----------------------------
-// Main
-// ----------------------------
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(1000, 700);
-    glutCreateWindow("Smart Farming System - Modern Agriculture Scene");
-
+    glutInitWindowSize(1100, 700);
+    glutInitWindowPosition(100, 50);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutCreateWindow("Smart Farming System");
     init();
     glutDisplayFunc(display);
-    glutKeyboardFunc(keyboard);
-    glutTimerFunc(16, update, 0);
-
+    glutTimerFunc(30, update, 0);
     glutMainLoop();
     return 0;
 }

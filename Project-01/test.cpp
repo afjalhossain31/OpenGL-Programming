@@ -132,7 +132,32 @@ void drawCloud(float x, float y) {
     drawFilledCircle(x + 18, y - 8, 18);
 }
 
+void drawLargeTree(float x, float y) {
+    // Trunk
+    glColor3f(0.35f, 0.16f, 0.08f);
+    fillRect(x - 8, y - 60, x + 8, y + 60);
+
+    // Darker green leaves
+    glColor3f(0.1f, 0.35f, 0.1f);
+    drawFilledCircle(x, y + 90, 35);
+    drawFilledCircle(x - 22, y + 70, 28);
+    drawFilledCircle(x + 22, y + 70, 28);
+    drawFilledCircle(x, y + 55, 25);
+}
+
 void drawFarmHouse() {
+    // brick wall (iter dewal) around house
+    glColor3f(0.55f, 0.27f, 0.15f); // Brick color
+    fillRect(-360, -25, -160, -10);
+
+    // brick patterns
+    glColor3f(0.4f, 0.15f, 0.1f);
+    for (int x = -355; x < -160; x += 30) {
+        drawDDA(x, -25, x, -10);
+    }
+    drawDDA(-360, -25, -160, -25);
+    drawDDA(-360, -10, -160, -10);
+
     // main body
     glColor3f(0.95f, 0.92f, 0.85f);
     fillRect(-320, -20, -200, 80);
@@ -155,6 +180,16 @@ void drawFarmHouse() {
     drawBresenham(-340, 80, -260, 140);
     drawBresenham(-260, 140, -180, 80);
     drawBresenham(-340, 80, -180, 80);
+
+    // Stairs (siri) at the entrance
+    glColor3f(0.6f, 0.6f, 0.6f); // Concrete color
+    fillRect(-285, -32, -235, -20); // Bottom step
+    fillRect(-278, -26, -242, -20); // Top step
+
+    glColor3f(0, 0, 0);
+    drawBresenham(-285, -32, -235, -32);
+    drawBresenham(-235, -32, -235, -20);
+    drawBresenham(-285, -32, -285, -20);
 
     // door
     glColor3f(0.45f, 0.28f, 0.15f);
@@ -240,29 +275,68 @@ void drawCrops() {
     }
 }
 
-void drawIrrigationSystem() {
-    // pipe
-    glColor3f(0.3f, 0.3f, 0.35f);
-    fillRect(-100, -40, 130, -25);
+void drawCow(float x, float y, float colorR, float colorG, float colorB) {
+    glPushMatrix();
+    glTranslatef(x, y, 0);
 
+    // Body
+    glColor3f(colorR, colorG, colorB);
+    fillRect(0, 0, 30, 18);
+
+    // Head
+    fillRect(-8, 10, 2, 22); // neck
+    drawFilledCircle(-8, 18, 7); // head
+
+    // Legs
+    fillRect(5, -8, 8, 0);
+    fillRect(22, -8, 25, 0);
+
+    // Eyes
     glColor3f(0, 0, 0);
-    drawDDA(-100, -40, 130, -40);
-    drawDDA(130, -40, 130, -25);
-    drawDDA(130, -25, -100, -25);
-    drawDDA(-100, -25, -100, -40);
+    drawFilledCircle(-10, 20, 1.5);
 
-    // sprinkler stand
-    glColor3f(0.4f, 0.4f, 0.45f);
-    fillRect(10, -25, 20, 15);
-
-    // water spray
-    glColor3f(0.4f, 0.8f, 1.0f);
-    for (int i = -5; i <= 5; i++) {
-        float dx = i * 12.0f;
-        float dy = sin((waterOffset + i) * 0.4f) * 8.0f;
-        drawFilledCircle(15 + dx, 20 + dy, 2.5f);
-        drawFilledCircle(15 + dx * 0.7f, 5 + dy * 0.7f, 2.0f);
+    // Spots (for variety)
+    if (colorR > 0.8) {
+        glColor3f(0.2, 0.2, 0.2);
+        drawFilledCircle(10, 12, 4);
+        drawFilledCircle(22, 5, 3);
     }
+
+    glPopMatrix();
+}
+
+void drawCowShed() {
+    // Road (Rasta) in front
+    glColor3f(0.4f, 0.4f, 0.45f);
+    fillRect(-150, -55, 150, -35);
+    glColor3f(1, 1, 1);
+    for (int x = -140; x < 140; x += 40) {
+        fillRect(x, -46, x + 20, -44);
+    }
+
+    // Shed structure
+    // Back wall
+    glColor3f(0.7f, 0.5f, 0.3f);
+    fillRect(-100, -35, 120, 40);
+
+    // Pillars
+    glColor3f(0.4f, 0.2f, 0.1f);
+    fillRect(-100, -35, -90, 40);
+    fillRect(10, -35, 20, 40);
+    fillRect(110, -35, 120, 40);
+
+    // Roof
+    glColor3f(0.5f, 0.5f, 0.55f);
+    glBegin(GL_POLYGON);
+    glVertex2i(-110, 40);
+    glVertex2i(130, 40);
+    glVertex2i(110, 70);
+    glVertex2i(-90, 70);
+    glEnd();
+
+    // Cows inside
+    drawCow(-60, -15, 0.9, 0.9, 0.9); // White cow with spots
+    drawCow(50, -15, 0.5, 0.3, 0.1);  // Brown cow
 }
 
 void drawTractor() {
@@ -335,8 +409,8 @@ void drawDrone() {
     drawBresenham(18, 0, 35, -18);
 
     // propellers
-    int px[4] = {-35, 35, -35, 35};
-    int py[4] = {18, 18, -18, -18};
+    int px[4] = { -35, 35, -35, 35 };
+    int py[4] = { 18, 18, -18, -18 };
 
     for (int i = 0; i < 4; i++) {
         glPushMatrix();
@@ -358,22 +432,6 @@ void drawDrone() {
     glPopMatrix();
 }
 
-void drawTechPanel() {
-    glColor3f(0.15f, 0.18f, 0.25f);
-    fillRect(100, 40, 180, 95);
-
-    glColor3f(0, 0, 0);
-    drawDDA(100, 40, 180, 40);
-    drawDDA(180, 40, 180, 95);
-    drawDDA(180, 95, 100, 95);
-    drawDDA(100, 95, 100, 40);
-
-    glColor3f(0.0f, 1.0f, 0.4f);
-    fillRect(110, 78, 170, 85);
-    fillRect(110, 62, 155, 69);
-    fillRect(110, 46, 165, 53);
-}
-
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -382,13 +440,13 @@ void display() {
     drawCloud(cloudX, 210);
     drawCloud(cloudX + 100, 185);
 
+    drawLargeTree(-360, 40);
     drawFarmHouse();
     drawWindmill();
-    drawTechPanel();
 
     drawFieldLines();
     drawCrops();
-    drawIrrigationSystem();
+    drawCowShed();
     drawDrone();
     drawTractor();
 

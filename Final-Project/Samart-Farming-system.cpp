@@ -3,7 +3,7 @@
 #include <cstdlib>
 
 // Global variables for animation
-float tractorX = -320.0f;
+float tractor_pos_x = -320.0f;
 float droneX = -250.0f;
 float cloudX = -150.0f;
 float windmillAngle = 0.0f;
@@ -83,7 +83,7 @@ void drawMidpointCircle(int xc, int yc, int r) {
     int x = 0;
     int y = r;
     int p = 1 - r;
-// initial points in all octants
+    // initial points in all octants
     while (x <= y) {
         plotPoint(xc + x, yc + y);
         plotPoint(xc - x, yc + y);
@@ -126,7 +126,7 @@ void drawFilledCircle(float xc, float yc, float r) {
 // Draws sky and ground layers
 void drawGround() {
     glColor3f(0.82f, 0.94f, 0.65f); // Light green upper ground
-    fillRect(-400, -50, 400, 300); 
+    fillRect(-400, -50, 400, 300);
 
     glColor3f(0.40f, 0.75f, 0.30f); // Darker-green lower field
     fillRect(-400, -220, 400, -50);
@@ -187,7 +187,7 @@ void drawFarmHouse() {
     // main body
     glColor3f(0.95f, 0.92f, 0.85f);
     fillRect(-320, -20, -200, 80);
-// Outline
+    // Outline
     glColor3f(0, 0, 0);
     drawDDA(-320, -20, -200, -20);
     drawDDA(-200, -20, -200, 80);
@@ -201,7 +201,7 @@ void drawFarmHouse() {
     glVertex2i(-180, 80);
     glVertex2i(-260, 140);
     glEnd();
-// roof outline
+    // roof outline
     glColor3f(0, 0, 0);
     drawBresenham(-340, 80, -260, 140);
     drawBresenham(-260, 140, -180, 80);
@@ -371,7 +371,7 @@ void drawCowShed() {
 // Automated tractor moving across the field
 void drawTractor() {
     glPushMatrix();
-    glTranslatef(tractorX, -145, 0);
+    glTranslatef(tractor_pos_x, -145, 0);
 
     // body
     glColor3f(0.15f, 0.6f, 0.18f);
@@ -486,13 +486,13 @@ void display() {
 
 // Handler for animation updates
 void update(int value) {
-    // tractor movement
-    tractorX += 2.0f;
-    if (tractorX > 420) tractorX = -420;
-// Drone movement
+    // movement
+    tractor_pos_x += 2.0f;
+    if (tractor_pos_x > 420) tractor_pos_x = -420;
+    // Drone movement
     droneX += 1.5f;
     if (droneX > 420) droneX = -420;
-// Cloud movement
+    // Cloud movement
     cloudX += 0.4f;
     if (cloudX > 420) cloudX = -220;
 

@@ -2,12 +2,12 @@
 #include <cmath>
 #include <cstdlib>
 
+// Global variables for animation
 float tractorX = -320.0f;
 float droneX = -250.0f;
 float cloudX = -150.0f;
 float windmillAngle = 0.0f;
 float propellerAngle = 0.0f;
-float waterOffset = 0.0f;
 float cropScale = 0.7f;
 bool cropGrow = true;
 
@@ -468,8 +468,6 @@ void update(int value) {
 
     propellerAngle += 12.0f;
     if (propellerAngle > 360) propellerAngle -= 360;
-
-    waterOffset += 1.0f;
 
     if (cropGrow) cropScale += 0.002f;
     else cropScale -= 0.002f;

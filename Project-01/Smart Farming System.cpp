@@ -11,16 +11,24 @@ float propellerAngle = 0.0f;
 float cropScale = 0.7f;
 bool cropGrow = true;
 
+// Helper functions for drawing primitives
 void plotPoint(int x, int y) {
     glBegin(GL_POINTS);
     glVertex2i(x, y);
     glEnd();
 }
-
+//Using DDA Algorithm for drawing straight lines
 void drawDDA(int x1, int y1, int x2, int y2) {
     int dx = x2 - x1;
     int dy = y2 - y1;
-    int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+    int steps;
+
+    if (abs(dx) > abs(dy)) {
+        steps = abs(dx);
+    }
+    else {
+        steps = abs(dy);
+    }
 
     float xInc = dx / (float)steps;
     float yInc = dy / (float)steps;
@@ -35,11 +43,24 @@ void drawDDA(int x1, int y1, int x2, int y2) {
     }
 }
 
+// Using Bresenham's Algorithm for drawing precise lines
 void drawBresenham(int x1, int y1, int x2, int y2) {
     int dx = abs(x2 - x1);
     int dy = abs(y2 - y1);
-    int sx = (x1 < x2) ? 1 : -1;
-    int sy = (y1 < y2) ? 1 : -1;
+    int sx, sy;
+    if (x1 < x2) {
+        sx = 1;
+    }
+    else {
+        sx = -1;
+    }
+
+    if (y1 < y2) {
+        sy = 1;
+    }
+    else {
+        sy = -1;
+    }
     int err = dx - dy;
 
     while (true) {
@@ -57,11 +78,12 @@ void drawBresenham(int x1, int y1, int x2, int y2) {
     }
 }
 
+// Midpoint Circle Drawing Algorithm
 void drawMidpointCircle(int xc, int yc, int r) {
     int x = 0;
     int y = r;
     int p = 1 - r;
-
+// initial points in all octants
     while (x <= y) {
         plotPoint(xc + x, yc + y);
         plotPoint(xc - x, yc + y);
@@ -81,7 +103,7 @@ void drawMidpointCircle(int xc, int yc, int r) {
         }
     }
 }
-
+// Utility to fill a rectangular area
 void fillRect(int x1, int y1, int x2, int y2) {
     glBegin(GL_POLYGON);
     glVertex2i(x1, y1);
@@ -90,7 +112,7 @@ void fillRect(int x1, int y1, int x2, int y2) {
     glVertex2i(x1, y2);
     glEnd();
 }
-
+// Utility to draw a filled circle using triangles
 void drawFilledCircle(float xc, float yc, float r) {
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(xc, yc);
@@ -101,16 +123,18 @@ void drawFilledCircle(float xc, float yc, float r) {
     glEnd();
 }
 
+// Draws sky and ground layers
 void drawGround() {
-    glColor3f(0.82f, 0.94f, 0.65f);
-    fillRect(-400, -50, 400, 300);
+    glColor3f(0.82f, 0.94f, 0.65f); // Light green upper ground
+    fillRect(-400, -50, 400, 300); 
 
-    glColor3f(0.40f, 0.75f, 0.30f);
+    glColor3f(0.40f, 0.75f, 0.30f); // Darker-green lower field
     fillRect(-400, -220, 400, -50);
 }
 
+// Draws the sun with rays
 void drawSun() {
-    glColor3f(1.0f, 0.75f, 0.0f);
+    glColor3f(1.0f, 0.75f, 0.0f); // Sun color
     drawFilledCircle(280, 220, 30);
 
     glColor3f(1.0f, 0.55f, 0.0f);
@@ -124,6 +148,7 @@ void drawSun() {
     }
 }
 
+// Draws clouds by overlapping circles
 void drawCloud(float x, float y) {
     glColor3f(1, 1, 1);
     drawFilledCircle(x, y, 18);
@@ -131,10 +156,10 @@ void drawCloud(float x, float y) {
     drawFilledCircle(x + 40, y, 18);
     drawFilledCircle(x + 18, y - 8, 18);
 }
-
+// Draws a large tree
 void drawLargeTree(float x, float y) {
-    // Trunk
-    glColor3f(0.35f, 0.16f, 0.08f);
+
+    glColor3f(0.35f, 0.16f, 0.08f); // Brown
     fillRect(x - 8, y - 60, x + 8, y + 60);
 
     // Darker green leaves
@@ -145,8 +170,9 @@ void drawLargeTree(float x, float y) {
     drawFilledCircle(x, y + 55, 25);
 }
 
+// Draws the Farmhouse with wall, roof, door, window, and stairs
 void drawFarmHouse() {
-    // brick wall (iter dewal) around house
+
     glColor3f(0.55f, 0.27f, 0.15f); // Brick color
     fillRect(-360, -25, -160, -10);
 
@@ -161,7 +187,7 @@ void drawFarmHouse() {
     // main body
     glColor3f(0.95f, 0.92f, 0.85f);
     fillRect(-320, -20, -200, 80);
-
+// Outline
     glColor3f(0, 0, 0);
     drawDDA(-320, -20, -200, -20);
     drawDDA(-200, -20, -200, 80);
@@ -175,13 +201,13 @@ void drawFarmHouse() {
     glVertex2i(-180, 80);
     glVertex2i(-260, 140);
     glEnd();
-
+// roof outline
     glColor3f(0, 0, 0);
     drawBresenham(-340, 80, -260, 140);
     drawBresenham(-260, 140, -180, 80);
     drawBresenham(-340, 80, -180, 80);
 
-    // Stairs (siri) at the entrance
+    //(siri) in front of door
     glColor3f(0.6f, 0.6f, 0.6f); // Concrete color
     fillRect(-285, -32, -235, -20); // Bottom step
     fillRect(-278, -26, -242, -20); // Top step
@@ -230,7 +256,7 @@ void drawWindmill() {
     glTranslatef(230, 140, 0);
     glRotatef(windmillAngle, 0, 0, 1);
 
-    glColor3f(0.95f, 0.95f, 0.98f);
+    glColor3f(0.95f, 0.95f, 0.98f); // Light gray blades
     glBegin(GL_TRIANGLES);
     glVertex2i(0, 0); glVertex2i(65, 8); glVertex2i(65, -8);
     glVertex2i(0, 0); glVertex2i(-65, 8); glVertex2i(-65, -8);
@@ -244,13 +270,15 @@ void drawWindmill() {
     glPopMatrix();
 }
 
+// horizontal grid lines for farming field
 void drawFieldLines() {
-    glColor3f(0.25f, 0.55f, 0.18f);
+    glColor3f(0.25f, 0.55f, 0.18f); // Green
     for (int y = -70; y >= -180; y -= 20) {
         drawDDA(-380, y, 380, y);
     }
 }
 
+// Animation of crops growing and shrinking
 void drawCrops() {
     glColor3f(0.10f, 0.55f, 0.10f);
 
@@ -275,6 +303,7 @@ void drawCrops() {
     }
 }
 
+// Cow drawing 
 void drawCow(float x, float y, float colorR, float colorG, float colorB) {
     glPushMatrix();
     glTranslatef(x, y, 0);
@@ -304,9 +333,9 @@ void drawCow(float x, float y, float colorR, float colorG, float colorB) {
 
     glPopMatrix();
 }
-
+//the cow shed with cows inside
 void drawCowShed() {
-    // Road (Rasta) in front
+    //Rastar front phase
     glColor3f(0.4f, 0.4f, 0.45f);
     fillRect(-150, -55, 150, -35);
     glColor3f(1, 1, 1);
@@ -339,6 +368,7 @@ void drawCowShed() {
     drawCow(50, -15, 0.5, 0.3, 0.1);  // Brown cow
 }
 
+// Automated tractor moving across the field
 void drawTractor() {
     glPushMatrix();
     glTranslatef(tractorX, -145, 0);
@@ -387,7 +417,7 @@ void drawTractor() {
 
     glPopMatrix();
 }
-
+// Automated drone flying across the sky
 void drawDrone() {
     glPushMatrix();
     glTranslatef(droneX, 120, 0);
@@ -432,6 +462,7 @@ void drawDrone() {
     glPopMatrix();
 }
 
+// the entire scene
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -453,19 +484,23 @@ void display() {
     glFlush();
 }
 
+// Handler for animation updates
 void update(int value) {
+    // tractor movement
     tractorX += 2.0f;
     if (tractorX > 420) tractorX = -420;
-
+// Drone movement
     droneX += 1.5f;
     if (droneX > 420) droneX = -420;
-
+// Cloud movement
     cloudX += 0.4f;
     if (cloudX > 420) cloudX = -220;
 
+    // Windmill rotation
     windmillAngle += 2.0f;
     if (windmillAngle > 360) windmillAngle -= 360;
 
+    // Drone propeller rotation
     propellerAngle += 12.0f;
     if (propellerAngle > 360) propellerAngle -= 360;
 
@@ -479,18 +514,19 @@ void update(int value) {
     glutTimerFunc(30, update, 0);
 }
 
+// OpenGL initialization
 void init() {
     glClearColor(0.58f, 0.84f, 0.98f, 1.0f);
     glPointSize(2.0);
     gluOrtho2D(-400, 400, -250, 300);
 }
-
+// Main function
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitWindowSize(1100, 700);
     glutInitWindowPosition(100, 50);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutCreateWindow("Smart Farming System");
+    glutCreateWindow("Smart Farming System by Afjal");
     init();
     glutDisplayFunc(display);
     glutTimerFunc(30, update, 0);

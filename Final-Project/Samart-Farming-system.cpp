@@ -3,23 +3,25 @@
 #include <cstdlib>
 
 // Global variables for animation
-float tractor_pos_x = -320.0f;
-float droneX = -250.0f;
+float tractor_pos_x = -320.0f; //horizontal vabe left-right move korbe
+float droneX = -250.0f; 
 float cloudX = -150.0f;
-float windmillAngle = 0.0f;
-float propellerAngle = 0.0f;
+
+float windmillAngle = 0.0f; // windmill rotation angle ghorbe
+float propellerAngle = 0.0f; //drone propeller rotation angle ghorbe
 float cropScale = 0.7f;
 bool cropGrow = true;
 
-// Helper functions for drawing primitives
+// Helper functions for drawing
 void plotPoint(int x, int y) {
     glBegin(GL_POINTS);
     glVertex2i(x, y);
     glEnd();
 }
-//Using DDA Algorithm for drawing straight lines
+
+//Using DDA Algorithm for drawing  lines
 void drawDDA(int x1, int y1, int x2, int y2) {
-    int dx = x2 - x1;
+    int dx = x2 - x1; // dx horizontal
     int dy = y2 - y1;
     int steps;
 
@@ -83,7 +85,7 @@ void drawMidpointCircle(int xc, int yc, int r) {
     int x = 0;
     int y = r;
     int p = 1 - r;
-    // initial points in all octants
+    // 8 points in all octants
     while (x <= y) {
         plotPoint(xc + x, yc + y);
         plotPoint(xc - x, yc + y);
@@ -94,7 +96,7 @@ void drawMidpointCircle(int xc, int yc, int r) {
         plotPoint(xc + y, yc - x);
         plotPoint(xc - y, yc - x);
 
-        x++;
+        x++; // x er value barabe
         if (p < 0)
             p += 2 * x + 1;
         else {
@@ -116,7 +118,7 @@ void fillRect(int x1, int y1, int x2, int y2) {
 void drawFilledCircle(float xc, float yc, float r) {
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(xc, yc);
-    for (int i = 0; i <= 360; i++) {
+    for (int i = 0; i <= 360; i++) { 
         float a = i * 3.1416f / 180.0f;
         glVertex2f(xc + cos(a) * r, yc + sin(a) * r);
     }
@@ -324,7 +326,7 @@ void drawCow(float x, float y, float colorR, float colorG, float colorB) {
     glColor3f(0, 0, 0);
     drawFilledCircle(-10, 20, 1.5);
 
-    // Spots (for variety)
+    // Spots (for variety) - Gorur upor kalo dag (spots) ekhane draw kora hoyeche
     if (colorR > 0.8) {
         glColor3f(0.2, 0.2, 0.2);
         drawFilledCircle(10, 12, 4);
@@ -369,6 +371,7 @@ void drawCowShed() {
 }
 
 // Automated tractor moving across the field
+// Tractor field er upor diye move korar logic ekhane kora hoyeche
 void drawTractor() {
     glPushMatrix();
     glTranslatef(tractor_pos_x, -145, 0);
@@ -418,6 +421,7 @@ void drawTractor() {
     glPopMatrix();
 }
 // Automated drone flying across the sky
+// Drone akash diye ure jawar logic ekhane kora hoyeche, propeller angle rotation soho
 void drawDrone() {
     glPushMatrix();
     glTranslatef(droneX, 120, 0);
@@ -485,23 +489,24 @@ void display() {
 }
 
 // Handler for animation updates
+// Ekhane sob dhoroner motion ba animation (Tractor, Drone, Cloud, Windmill) control kora hoyeche
 void update(int value) {
     // movement
-    tractor_pos_x += 2.0f;
+    tractor_pos_x += 2.0f; // Tractor er motion
     if (tractor_pos_x > 420) tractor_pos_x = -420;
     // Drone movement
-    droneX += 1.5f;
+    droneX += 1.5f; // Drone er motion
     if (droneX > 420) droneX = -420;
     // Cloud movement
-    cloudX += 0.4f;
+    cloudX += 0.4f; // Cloud er motion
     if (cloudX > 420) cloudX = -220;
 
     // Windmill rotation
-    windmillAngle += 2.0f;
+    windmillAngle += 2.0f; // Windmill er rotation motion
     if (windmillAngle > 360) windmillAngle -= 360;
 
     // Drone propeller rotation
-    propellerAngle += 12.0f;
+    propellerAngle += 12.0f; // Drone propeller er ghurnon motion
     if (propellerAngle > 360) propellerAngle -= 360;
 
     if (cropGrow) cropScale += 0.002f;
